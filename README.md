@@ -18,9 +18,9 @@ The extension reads the model out of the viewer's 3D scene in your browser, so n
 
 ## Install on Windows (easiest)
 
-Double-click `install.bat`. It builds the extension if needed, opens Chrome's extensions page and the project folder, and copies the `dist` folder path to your clipboard. Then, in Chrome: turn on **Developer mode** (top right), click **Load unpacked**, and pick the `dist` folder.
+Double-click `install.bat`. It checks for Node.js (and prints the version it finds), builds the extension, opens Chrome's extensions page and the project folder, and copies the `dist` folder path to your clipboard. Then, in Chrome: turn on **Developer mode** (top right), click **Load unpacked**, and pick the `dist` folder.
 
-The first run may need Node.js. If it does, it opens the download page — install Node, then run `install.bat` again.
+If Node.js isn't installed, the script stops and opens the download page — install Node 18+, then run `install.bat` again.
 
 ## Install by hand (any OS)
 
