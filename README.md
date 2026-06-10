@@ -2,12 +2,17 @@
   <img src="logo.png" width="110" alt="Meshy GLB Exporter logo">
 </p>
 
-<h1 align="center">Meshy GLB Exporter</h1>
+<h1 align="center">MeshySec
+</h1>
 
 <p align="center">Export your Meshy 3D models to GLB, straight from the viewer.</p>
 
 <p align="center">
   <a href="https://discord.gg/VYYS9kEcjT"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Join the Discord"></a>
+</p>
+
+<p align="center">
+  <img align="center" width="774" height="638" alt="image" src="https://github.com/user-attachments/assets/c42393db-d764-46eb-a59c-85efaed4b214" />
 </p>
 
 ## What it does
