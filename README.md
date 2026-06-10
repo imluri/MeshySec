@@ -73,7 +73,12 @@ Otherwise, you need to "build" it once:
 3. Click the blue **🧊 GLB** button.
 4. A `.glb` file downloads to your computer. That's your model! 🥳
 
-Want to check it worked? Drag the `.glb` file onto <https://gltf-viewer.donmccurdy.com> and you'll see it.
+### 👀 View your model
+
+Drag the `.glb` straight into a 3D viewer in your browser — no install needed:
+
+- **Model Map** → <https://imluri.github.io/model-map> — *click or drag to load* a `.glb`/`.gltf`, orbit and zoom, and even drop labelled **pins** on parts and export them as JSON. 📍
+- Or **glTF Viewer** → <https://gltf-viewer.donmccurdy.com>
 
 ---
 
