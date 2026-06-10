@@ -4,113 +4,81 @@
 
 <h1 align="center">Meshy GLB Exporter</h1>
 
-<p align="center">A Chrome extension that adds a blue <b>GLB</b> button to the Meshy model viewer so you can save your own models as a <code>.glb</code> 3D file.</p>
+<p align="center">Export your Meshy 3D models to GLB, straight from the viewer.</p>
 
----
+<p align="center">
+  <a href="https://discord.gg/VYYS9kEcjT"><img src="https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white" alt="Join the Discord"></a>
+</p>
 
 ## What it does
 
-When you open one of **your own** models on [meshy.ai](https://www.meshy.ai/workspace), this
-extension puts a blue **🧊 GLB** button in the viewer toolbar. Click it, and it saves the model's
-shape to a `.glb` file on your computer — a normal 3D file you can open in Blender and almost
-anything else.
+It adds a blue **GLB** button to the Meshy model viewer. Open one of your models, click the button, and the model's geometry downloads as a `.glb`.
 
-> It exports the **geometry** (the shape). Colors/textures come later. For **personal use of
-> models you made on your own account.**
+The extension reads the model out of the viewer's 3D scene in your browser, so nothing gets uploaded anywhere. It exports geometry only for now — mesh shape, no textures. It's meant for exporting your own models for personal use.
 
----
+## Install on Windows (easiest)
 
-## 🛠️ Install it (super simple)
+Double-click `install.bat`. It builds the extension if needed, opens Chrome's extensions page and the project folder, and copies the `dist` folder path to your clipboard. Then, in Chrome: turn on **Developer mode** (top right), click **Load unpacked**, and pick the `dist` folder.
 
-### ⚡ Easiest way — double-click `install.bat` (Windows)
+The first run may need Node.js. If it does, it opens the download page — install Node, then run `install.bat` again.
 
-1. Double-click **`install.bat`** in this folder.
-2. It builds the extension (if needed) and opens **Chrome's extensions page** plus this folder for you. The path to the `dist` folder is even copied to your clipboard.
-3. In Chrome: turn on **Developer mode** (top-right), click **Load unpacked**, and choose the **`dist`** folder (or paste the copied path).
-4. Done! 🎉 *(First time only: if it asks for Node.js, click the link it opens, install it, then run `install.bat` again.)*
+## Install by hand (any OS)
 
-Prefer to do it by hand, or not on Windows? Use the steps below. 👇
-
----
-
-### Step A — get the `dist` folder ready (one time)
-
-If you downloaded this project as a ready-to-use folder that already has a **`dist`** folder
-inside it, **skip to Step B.** 🎉
-
-Otherwise, you need to "build" it once:
-
-1. Install **Node.js** from <https://nodejs.org> (click the big green button, then Next → Next → Finish).
-2. Open this project folder.
-3. Open a terminal in that folder and type these two lines, pressing Enter after each:
-   ```
-   npm install
-   npm run build
-   ```
-4. A new **`dist`** folder appears. That's the extension. ✅
-
-### Step B — add it to Chrome
-
-1. Open **Google Chrome**.
-2. In the address bar at the top, type this and press Enter:
-   ```
-   chrome://extensions
-   ```
-3. Find the **“Developer mode”** switch in the **top-right corner** and turn it **ON**. 🔛
-4. Click the **“Load unpacked”** button (top-left).
-5. A file picker opens. Choose the **`dist`** folder from this project and click **Select Folder**.
-6. Done! You should see **Meshy GLB Exporter** with the blue cube logo. 🧊
-
-> Did you change or rebuild something? Go back to `chrome://extensions` and click the little
-> **↻ reload** circle on the extension's card.
-
----
-
-## ▶️ How to use it
-
-1. Go to <https://www.meshy.ai/workspace> and **open one of your models** so you can see it spin in 3D.
-2. Look at the **toolbar at the bottom** of the viewer.
-3. Click the blue **🧊 GLB** button.
-4. A `.glb` file downloads to your computer. That's your model! 🥳
-
-### 👀 View your model
-
-Drag the `.glb` straight into a 3D viewer in your browser — no install needed:
-
-- **Model Map** → <https://imluri.github.io/model-map> — *click or drag to load* a `.glb`/`.gltf`, orbit and zoom, and even drop labelled **pins** on parts and export them as JSON. 📍
-- Or **glTF Viewer** → <https://gltf-viewer.donmccurdy.com>
-
----
-
-## 🔄 Turn the `.glb` into other formats (OBJ, FBX, STL, USDZ…)
-
-A `.glb` opens almost everywhere. To convert it:
-
-- **Blender** (free): *File → Import → glTF 2.0*, then *File → Export →* whatever you want.
-- Or any online glTF converter.
-
----
-
-## ℹ️ Good to know
-
-- ✅ Works on **your own** Meshy models, for **personal use**.
-- 🔷 The button only appears **when a model is open** in the viewer (that's the only time export makes sense).
-- 📐 Right now it exports **geometry only** (shape, no textures yet).
-- 🧱 It grabs the model straight from the viewer in your browser — nothing is sent anywhere.
-
----
-
-## 👩‍💻 For developers
+Build it once:
 
 ```bash
-npm install        # install build + test tools
-npm run build      # bundle the extension into dist/
-npm test           # run unit tests (Vitest)
-npm run icons      # regenerate dist icons from logo.png
+npm install
+npm run build
 ```
 
-- **Geometry capture / scene discovery:** [`src/main/capture.js`](src/main/capture.js)
-- **GLB writer:** [`src/main/glb.js`](src/main/glb.js)
-- **Page bridge (MAIN world):** [`src/main/index.js`](src/main/index.js)
-- **Toolbar button (UI):** [`src/ui/index.js`](src/ui/index.js)
-- **Design / plan / investigation notes:** [`docs/`](docs/)
+That creates a `dist/` folder. Load it in Chrome:
+
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode** (top right).
+3. Click **Load unpacked** and choose the `dist` folder.
+
+Changed or rebuilt something? Click the reload icon on the extension's card in `chrome://extensions`.
+
+## Using it
+
+1. Open a model on [meshy.ai/workspace](https://www.meshy.ai/workspace) so it's showing in the 3D viewer.
+2. Click the blue **GLB** button in the toolbar at the bottom of the viewer.
+3. The `.glb` downloads.
+
+The button only appears while a model is open, since that's the only time there's a model to export.
+
+## Viewing the file
+
+Drop the `.glb` into a browser viewer:
+
+- [Model Map](https://imluri.github.io/model-map) — loads `.glb`/`.gltf`, orbit and zoom, and lets you place labelled pins on parts and export them as JSON.
+- [glTF Viewer](https://gltf-viewer.donmccurdy.com) — quick check that the file opens.
+
+## Converting to OBJ, FBX, STL, USDZ
+
+A `.glb` imports almost everywhere. In Blender: *File → Import → glTF 2.0*, then *File → Export* to whatever you need. `assimp` and `gltf-transform` work from the command line.
+
+## Limitations
+
+- Geometry only. No textures or materials yet.
+- Works on your own Meshy models, for personal use.
+- It reads the model from the viewer in your browser; nothing leaves your machine.
+
+## Community
+
+Questions, ideas, or bugs — join the Discord: <https://discord.gg/VYYS9kEcjT>.
+
+## Development
+
+```bash
+npm install    # build and test tools
+npm run build  # bundle the extension into dist/
+npm test       # run unit tests (Vitest)
+npm run icons  # regenerate icons from logo.png
+```
+
+- Geometry capture and scene discovery: [`src/main/capture.js`](src/main/capture.js)
+- GLB writer: [`src/main/glb.js`](src/main/glb.js)
+- Page bridge (MAIN world): [`src/main/index.js`](src/main/index.js)
+- Toolbar button: [`src/ui/index.js`](src/ui/index.js)
+- Design and investigation notes: [`docs/`](docs/)
