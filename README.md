@@ -43,7 +43,10 @@ Changed or rebuilt something? Click the reload icon on the extension's card in `
 
 1. Open a model on [meshy.ai/workspace](https://www.meshy.ai/workspace) so it's showing in the 3D viewer.
 2. Click the blue **GLB** button in the toolbar at the bottom of the viewer.
-3. The `.glb` downloads.
+3. Pick an option:
+   - **With textures** — embeds the base color, normal, and metallic/roughness maps as a PBR material. Larger file, takes a few seconds.
+   - **Geometry only** — just the mesh shape. Fast and small.
+4. The `.glb` downloads.
 
 The button only appears while a model is open, since that's the only time there's a model to export.
 
@@ -60,7 +63,7 @@ A `.glb` imports almost everywhere. In Blender: *File → Import → glTF 2.0*, 
 
 ## Limitations
 
-- Geometry only. No textures or materials yet.
+- Textures export only for models the viewer shows textured (a `MeshStandardMaterial` with maps). A model in the plain white clay/matcap preview, or one without UVs, exports geometry only.
 - Works on your own Meshy models, for personal use.
 - It reads the model from the viewer in your browser; nothing leaves your machine.
 

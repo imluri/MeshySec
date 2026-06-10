@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Meshy GLB Exporter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Export your own Meshy models from the workspace viewer to GLB.",
   "permissions": [],
   "host_permissions": ["https://www.meshy.ai/*"],
