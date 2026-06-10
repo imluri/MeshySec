@@ -11,6 +11,7 @@ window.addEventListener('message', (event) => {
 
   try {
     const meshes = captureSceneGeometry();
+    logCapturedMeshes(meshes);
     const glb = writeGlb(meshes);
     const filename = deriveFilename();
     window.postMessage({ source: 'meshy-glb-main', type: RESULT, ok: true, glb, filename }, '*', [glb]);
@@ -18,6 +19,33 @@ window.addEventListener('message', (event) => {
     window.postMessage({ source: 'meshy-glb-main', type: RESULT, ok: false, error: String(err && err.message || err) }, '*');
   }
 });
+
+/** Diagnostic: log the world-space bbox + index sanity of what we're about to export. */
+function logCapturedMeshes(meshes) {
+  try {
+    const summary = meshes.map((m) => {
+      const p = m.positions;
+      let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+      for (let i = 0; i < p.length; i += 3) {
+        const x = p[i], y = p[i + 1], z = p[i + 2];
+        if (x < mnx) mnx = x; if (y < mny) mny = y; if (z < mnz) mnz = z;
+        if (x > mxx) mxx = x; if (y > mxy) mxy = y; if (z > mxz) mxz = z;
+      }
+      let idxMax = -1;
+      if (m.indices) for (let i = 0; i < m.indices.length; i++) if (m.indices[i] > idxMax) idxMax = m.indices[i];
+      return {
+        name: m.name, verts: p.length / 3,
+        min: [+mnx.toFixed(4), +mny.toFixed(4), +mnz.toFixed(4)],
+        max: [+mxx.toFixed(4), +mxy.toFixed(4), +mxz.toFixed(4)],
+        idxCount: m.indices ? m.indices.length : 0, idxMax,
+        normals: m.normals ? m.normals.length / 3 : 0, uvs: m.uvs ? m.uvs.length / 2 : 0,
+      };
+    });
+    console.log('[MeshyGLB] captured meshes ->', JSON.stringify(summary));
+  } catch (e) {
+    console.log('[MeshyGLB] capture-debug failed', e);
+  }
+}
 
 function deriveFilename() {
   // Task 1 findings record the id-bearing URL segment; fall back to a timestamp.

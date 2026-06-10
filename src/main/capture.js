@@ -14,18 +14,35 @@ function bakePositions(src, e) {
   return out;
 }
 
-/** Apply the upper-left 3x3 to normals (adequate for rigid/uniform-scale) and renormalize. */
+/** Apply the upper-left 3x3 to normals (adequate for rigid/uniform-scale) and renormalize.
+ *  Degenerate (zero-length) source normals are replaced with a unit normal so the
+ *  output never contains non-unit vectors (which glTF validators reject). */
 function bakeNormals(src, e) {
   const out = new Float32Array(src.length);
   for (let i = 0; i < src.length; i += 3) {
     const x = src[i], y = src[i + 1], z = src[i + 2];
-    let nx = e[0] * x + e[4] * y + e[8]  * z;
-    let ny = e[1] * x + e[5] * y + e[9]  * z;
-    let nz = e[2] * x + e[6] * y + e[10] * z;
-    const len = Math.hypot(nx, ny, nz) || 1;
-    out[i] = nx / len; out[i + 1] = ny / len; out[i + 2] = nz / len;
+    const nx = e[0] * x + e[4] * y + e[8]  * z;
+    const ny = e[1] * x + e[5] * y + e[9]  * z;
+    const nz = e[2] * x + e[6] * y + e[10] * z;
+    const len = Math.hypot(nx, ny, nz);
+    if (len < 1e-8) { out[i] = 0; out[i + 1] = 0; out[i + 2] = 1; }
+    else { out[i] = nx / len; out[i + 1] = ny / len; out[i + 2] = nz / len; }
   }
   return out;
+}
+
+/**
+ * Detect non-model meshes (the environment dome, overlays, gizmos). A solid model
+ * mesh writes and tests depth; backgrounds/overlays disable one or both so they
+ * always draw behind/over everything. Materials may be an array (multi-material).
+ * @param {object|object[]|undefined} material
+ * @returns {boolean}
+ */
+function isBackdropMaterial(material) {
+  if (!material) return false;
+  const mats = Array.isArray(material) ? material : [material];
+  if (mats.length === 0) return false;
+  return mats.every((m) => m && (m.depthWrite === false || m.depthTest === false));
 }
 
 function indicesToUint32(index) {
@@ -81,6 +98,7 @@ export function extractMeshes(scene) {
 
     if (!node.isMesh || !node.geometry || node.visible === false) continue;
     if (node.name && SKIP_NAME.test(node.name)) continue;
+    if (isBackdropMaterial(node.material)) continue;
 
     const attrs = node.geometry.attributes || {};
     const pos = attrs.position;

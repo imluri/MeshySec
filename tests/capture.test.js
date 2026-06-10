@@ -48,6 +48,27 @@ describe('extractMeshes', () => {
     const out = extractMeshes(fakeScene([group]));
     expect(out.length).toBe(1);
   });
+
+  it('skips background/overlay meshes (material with depthWrite/depthTest false)', () => {
+    const model = fakeMesh('Model', [0,0,0,1,0,0,0,1,0]);
+    const dome = fakeMesh('Dome', [0,0,0,1,0,0,0,1,0]);
+    dome.material = { depthWrite: false, depthTest: false, side: 1 }; // environment dome
+    const out = extractMeshes(fakeScene([model, dome]));
+    expect(out.map((o) => o.name)).toEqual(['Model']);
+  });
+
+  it('keeps meshes with solid materials or no material', () => {
+    const a = fakeMesh('A', [0,0,0,1,0,0,0,1,0]); a.material = { depthWrite: true, depthTest: true };
+    const b = fakeMesh('B', [0,0,0,1,0,0,0,1,0]); // no material at all
+    const out = extractMeshes(fakeScene([a, b]));
+    expect(out.map((o) => o.name).sort()).toEqual(['A', 'B']);
+  });
+
+  it('replaces degenerate (zero-length) normals with a unit normal', () => {
+    const mesh = fakeMesh('Model', [0,0,0, 1,0,0, 0,1,0], { normals: [0,0,0, 0,0,1, 0,0,1] });
+    const out = extractMeshes(fakeScene([mesh]));
+    expect(Array.from(out[0].normals).slice(0, 3)).toEqual([0, 0, 1]);
+  });
 });
 
 describe('extractMeshes — interleaved / accessor-based attributes', () => {
