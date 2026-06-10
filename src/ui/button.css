@@ -2,6 +2,7 @@
    "pill" (matching the native pill shape/size) with a transparent button inside,
    so the whole background is blue — not a blue button over the native gray pill. */
 #meshy-glb-export-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 8px;
@@ -32,3 +33,37 @@
   display: block;
   pointer-events: none;
 }
+
+/* The "With textures / Geometry only" menu above the button. */
+#meshy-glb-export-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  background: #1f2330;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+}
+#meshy-glb-export-popover[hidden] { display: none; }
+.meshy-glb-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: 600 12px/1.25 system-ui, -apple-system, sans-serif;
+}
+.meshy-glb-opt:hover { background: rgba(255, 255, 255, .10); }
+.meshy-glb-opt .s { font-weight: 400; font-size: 11px; color: #9aa0ad; }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractMeshes, findSceneInGraph } from '../src/main/capture.js';
+import { extractMeshes, findSceneInGraph, applyUvTransform } from '../src/main/capture.js';
 
 // Minimal fake Three.js objects (duck-typed).
 function fakeMesh(name, positions, opts = {}) {
@@ -99,6 +99,23 @@ describe('extractMeshes — interleaved / accessor-based attributes', () => {
     const m = [1,0,0,0, 0,1,0,0, 0,0,1,0, 100,0,0,1]; // translate +100 on x
     const out = extractMeshes({ isScene: true, children: [meshWith(interleavedPosition([1,2,3]), m)] });
     expect(Array.from(out[0].positions)).toEqual([101,2,3]);
+  });
+});
+
+describe('applyUvTransform', () => {
+  it('applies a Three Matrix3 (repeat + offset) to UVs, matching the viewer', () => {
+    // column-major Matrix3: repeat 16 on u and v, small offset on v.
+    const e = [16, 0, 0, 0, 16, 0, 0.001, 0.002, 1];
+    const out = applyUvTransform(new Float32Array([0.0625, 0.0625]), e);
+    expect(out[0]).toBeCloseTo(16 * 0.0625 + 0.001, 5); // 1.001
+    expect(out[1]).toBeCloseTo(16 * 0.0625 + 0.002, 5); // 1.002
+  });
+
+  it('is identity for the identity matrix', () => {
+    const e = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const out = applyUvTransform(new Float32Array([0.3, 0.7]), e);
+    expect(out[0]).toBeCloseTo(0.3, 6);
+    expect(out[1]).toBeCloseTo(0.7, 6);
   });
 });
 

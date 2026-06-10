@@ -1,4 +1,5 @@
 /** @typedef {import('./types.js').CapturedMesh} CapturedMesh */
+import { captureMaterial } from './textures.js';
 
 const SKIP_NAME = /grid|helper|gizmo|skybox|sky_?box|background|ground|floor|axes|bounding|wireframe/i;
 
@@ -84,11 +85,40 @@ function readVec(attr, comps) {
 }
 
 /**
- * Walk a Three.js-shaped scene and return world-space CapturedMesh[] for model meshes only.
- * @param {object} scene  object with `.children` (Three.js Scene/Object3D duck type)
- * @returns {CapturedMesh[]}
+ * Bake a Three.js texture transform (Matrix3) into a UV array, so the exported
+ * UVs span the texture directly with no KHR_texture_transform extension needed.
+ * Mirrors the viewer's `vUv = matrix * vec3(u, v, 1)`.
+ * @param {Float32Array} uvs
+ * @param {ArrayLike<number>} e  Three Matrix3.elements (column-major, length 9)
+ * @returns {Float32Array}
  */
-export function extractMeshes(scene) {
+export function applyUvTransform(uvs, e) {
+  const out = new Float32Array(uvs.length);
+  for (let i = 0; i < uvs.length; i += 2) {
+    const u = uvs[i], v = uvs[i + 1];
+    out[i]     = e[0] * u + e[3] * v + e[6];
+    out[i + 1] = e[1] * u + e[4] * v + e[7];
+  }
+  return out;
+}
+
+/** Read the (updated) UV transform matrix shared by a material's maps, or null. */
+function uvMatrixOf(material) {
+  const mat = Array.isArray(material) ? material[0] : material;
+  const map = mat && (mat.map || mat.normalMap || mat.roughnessMap || mat.metalnessMap || mat.emissiveMap);
+  if (!map) return null;
+  try { if (map.matrixAutoUpdate && typeof map.updateMatrix === 'function') map.updateMatrix(); } catch { /* ignore */ }
+  const e = map.matrix && map.matrix.elements;
+  return e && e.length === 9 ? e : null;
+}
+
+/**
+ * Walk a Three.js-shaped scene and return the live model mesh nodes only
+ * (skips helpers/gizmos by name, and backdrop/overlay meshes by material).
+ * @param {object} scene  object with `.children` (Three.js Scene/Object3D duck type)
+ * @returns {object[]} Three.js Mesh nodes
+ */
+export function modelMeshNodes(scene) {
   const out = [];
   const stack = [scene];
   while (stack.length) {
@@ -100,21 +130,41 @@ export function extractMeshes(scene) {
     if (node.name && SKIP_NAME.test(node.name)) continue;
     if (isBackdropMaterial(node.material)) continue;
 
-    const attrs = node.geometry.attributes || {};
-    const pos = attrs.position;
+    const pos = node.geometry.attributes && node.geometry.attributes.position;
     const vcount = pos ? (pos.count != null ? pos.count : (pos.array ? pos.array.length / 3 : 0)) : 0;
     if (!vcount) continue;
-
-    const e = (node.matrixWorld && node.matrixWorld.elements) || [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
-    out.push({
-      positions: bakePositions(readVec(pos, 3), e),
-      normals: attrs.normal ? bakeNormals(readVec(attrs.normal, 3), e) : null,
-      uvs: attrs.uv ? readVec(attrs.uv, 2) : null,
-      indices: indicesToUint32(node.geometry.index),
-      name: node.name || `mesh_${out.length}`,
-    });
+    out.push(node);
   }
   return out;
+}
+
+/** Build a world-space CapturedMesh (geometry only) from a Three.js mesh node. */
+export function meshToCaptured(node) {
+  const attrs = node.geometry.attributes || {};
+  const pos = attrs.position;
+  const e = (node.matrixWorld && node.matrixWorld.elements) || [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  return {
+    positions: bakePositions(readVec(pos, 3), e),
+    normals: attrs.normal ? bakeNormals(readVec(attrs.normal, 3), e) : null,
+    uvs: attrs.uv ? readVec(attrs.uv, 2) : null,
+    indices: indicesToUint32(node.geometry.index),
+    name: node.name || '',
+    material: null,
+  };
+}
+
+/**
+ * Walk a Three.js-shaped scene and return world-space CapturedMesh[] for model
+ * meshes only (geometry, no textures).
+ * @param {object} scene
+ * @returns {CapturedMesh[]}
+ */
+export function extractMeshes(scene) {
+  return modelMeshNodes(scene).map((node, i) => {
+    const c = meshToCaptured(node);
+    if (!c.name) c.name = `mesh_${i}`;
+    return c;
+  });
 }
 
 /** Climb from any Three.js object to its root scene via `.parent`. */
@@ -230,14 +280,36 @@ export function findScene() {
 }
 
 /**
- * Find the scene and extract its model geometry.
- * @returns {CapturedMesh[]}
+ * Find the scene and extract its model geometry. With `opts.withTextures`, also
+ * reads each material's maps into the CapturedMesh (only for meshes that have
+ * UVs — a textured material is meaningless without TEXCOORD_0).
+ * @param {{withTextures?: boolean}} [opts]
+ * @returns {Promise<CapturedMesh[]>}
  * @throws {Error} if no scene or no model meshes are found.
  */
-export function captureSceneGeometry() {
+export async function captureSceneGeometry(opts = {}) {
   const scene = findScene();
   if (!scene) throw new Error('Could not find the Meshy 3D scene. Open a model and try again.');
-  const meshes = extractMeshes(scene);
-  if (meshes.length === 0) throw new Error('No exportable geometry found — is a model open in the viewer?');
+  const nodes = modelMeshNodes(scene);
+  if (nodes.length === 0) throw new Error('No exportable geometry found — is a model open in the viewer?');
+
+  const meshes = nodes.map((node, i) => {
+    const c = meshToCaptured(node);
+    if (!c.name) c.name = `mesh_${i}`;
+    return c;
+  });
+
+  if (opts.withTextures) {
+    for (let i = 0; i < nodes.length; i++) {
+      if (!meshes[i].uvs || !nodes[i].material) continue; // textures need UVs
+      try {
+        meshes[i].material = await captureMaterial(nodes[i].material);
+        // Bake the material's UV transform (repeat/offset) into the UVs so the
+        // embedded textures sample correctly without a glTF extension.
+        const e = uvMatrixOf(nodes[i].material);
+        if (e) meshes[i].uvs = applyUvTransform(meshes[i].uvs, e);
+      } catch { /* keep geometry even if a texture fails to encode */ }
+    }
+  }
   return meshes;
 }

@@ -4,13 +4,13 @@ import { writeGlb } from './glb.js';
 const REQUEST = 'MESHY_GLB_EXPORT_REQUEST';
 const RESULT = 'MESHY_GLB_EXPORT_RESULT';
 
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   if (event.source !== window) return;
   const data = event.data;
   if (!data || data.source !== 'meshy-glb-ui' || data.type !== REQUEST) return;
 
   try {
-    const meshes = captureSceneGeometry();
+    const meshes = await captureSceneGeometry({ withTextures: !!data.withTextures });
     logCapturedMeshes(meshes);
     const glb = writeGlb(meshes);
     const filename = deriveFilename();

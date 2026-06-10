@@ -25,12 +25,48 @@ export function writeGlb(meshes) {
   function addBufferView(typed, target) {
     const bytes = new Uint8Array(typed.buffer, typed.byteOffset, typed.byteLength);
     const byteOffset = binLength;
-    json.bufferViews.push({ buffer: 0, byteOffset, byteLength: bytes.byteLength, target });
+    const bv = { buffer: 0, byteOffset, byteLength: bytes.byteLength };
+    if (target !== undefined) bv.target = target; // images use bufferViews with no target
+    json.bufferViews.push(bv);
     binChunks.push(bytes);
     binLength += bytes.byteLength;
     const pad = align4(binLength) - binLength;
     if (pad) { binChunks.push(new Uint8Array(pad)); binLength += pad; }
     return json.bufferViews.length - 1;
+  }
+
+  // Embed a PNG and return its glTF texture index, deduping by byte-array identity.
+  const texIndexByBytes = new Map();
+  function addTexture(bytes) {
+    if (texIndexByBytes.has(bytes)) return texIndexByBytes.get(bytes);
+    if (!json.images) json.images = [];
+    if (!json.textures) json.textures = [];
+    if (!json.samplers) json.samplers = [{ wrapS: 10497, wrapT: 10497 }]; // REPEAT
+    const bv = addBufferView(bytes);
+    json.images.push({ bufferView: bv, mimeType: 'image/png' });
+    json.textures.push({ source: json.images.length - 1, sampler: 0 });
+    const ti = json.textures.length - 1;
+    texIndexByBytes.set(bytes, ti);
+    return ti;
+  }
+  function addMaterial(mat) {
+    if (!json.materials) json.materials = [];
+    const pbr = {};
+    if (mat.baseColorFactor) pbr.baseColorFactor = mat.baseColorFactor;
+    if (mat.baseColorImage) pbr.baseColorTexture = { index: addTexture(mat.baseColorImage) };
+    pbr.metallicFactor = mat.metallicFactor != null ? mat.metallicFactor : 1;
+    pbr.roughnessFactor = mat.roughnessFactor != null ? mat.roughnessFactor : 1;
+    if (mat.metalRoughImage) pbr.metallicRoughnessTexture = { index: addTexture(mat.metalRoughImage) };
+    const out = { pbrMetallicRoughness: pbr };
+    if (mat.normalImage) out.normalTexture = { index: addTexture(mat.normalImage) };
+    if (mat.emissiveImage) {
+      out.emissiveTexture = { index: addTexture(mat.emissiveImage) };
+      out.emissiveFactor = mat.emissiveFactor || [1, 1, 1];
+    } else if (mat.emissiveFactor) {
+      out.emissiveFactor = mat.emissiveFactor;
+    }
+    json.materials.push(out);
+    return json.materials.length - 1;
   }
 
   meshes.forEach((m, i) => {
@@ -65,6 +101,8 @@ export function writeGlb(meshes) {
       json.accessors.push({ bufferView: bv, componentType: UINT, count: m.indices.length, type: 'SCALAR' });
       prim.indices = json.accessors.length - 1;
     }
+
+    if (m.material) prim.material = addMaterial(m.material);
 
     const name = m.name || `mesh_${i}`;
     json.meshes.push({ primitives: [prim], name });
