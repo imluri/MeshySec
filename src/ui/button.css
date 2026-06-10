@@ -1,15 +1,34 @@
-#meshy-glb-export-btn {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 2147483647;
-  padding: 10px 14px;
-  font: 600 13px/1 system-ui, sans-serif;
-  color: #fff;
-  background: #6c4cff;
-  border: none;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.3);
-  cursor: pointer;
+/* The export control lives in Meshy's viewer toolbar. It is a single brand-blue
+   "pill" (matching the native pill shape/size) with a transparent button inside,
+   so the whole background is blue — not a blue button over the native gray pill. */
+#meshy-glb-export-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 55%, #4338ca 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .12);
 }
+#meshy-glb-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  font: 600 12px/1 system-ui, -apple-system, sans-serif;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+  transition: background .1s ease;
+}
+#meshy-glb-export-btn:hover { background: rgba(255, 255, 255, .16); }
+#meshy-glb-export-btn:active { background: rgba(255, 255, 255, .08); }
 #meshy-glb-export-btn[disabled] { opacity: .6; cursor: default; }
+#meshy-glb-export-btn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  pointer-events: none;
+}

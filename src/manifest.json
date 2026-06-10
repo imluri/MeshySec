@@ -5,6 +5,21 @@
   "description": "Export your own Meshy models from the workspace viewer to GLB.",
   "permissions": [],
   "host_permissions": ["https://www.meshy.ai/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Meshy GLB Exporter — use the GLB button in the model viewer toolbar",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
   "content_scripts": [
     {
       "matches": ["https://www.meshy.ai/*"],
@@ -17,6 +32,12 @@
       "js": ["ui.js"],
       "css": ["button.css"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon16.png", "icons/icon32.png", "icons/icon48.png", "icons/icon128.png"],
+      "matches": ["https://www.meshy.ai/*"]
     }
   ]
 }

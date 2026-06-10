@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "icons": "node scripts/make-icons.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.1.0",
     "esbuild": "^0.24.0",
+    "sharp": "^0.34.5",
     "vitest": "^2.1.0"
   }
 }
