@@ -64,3 +64,81 @@ export function extractMeshes(scene) {
   }
   return out;
 }
+
+const isThree = (o) => {
+  try { return !!o && (o.isScene || o.isObject3D || o.isMesh || o.isWebGLRenderer); }
+  catch { return false; }
+};
+
+/** Climb from any Three.js object to its root scene. */
+function rootSceneOf(obj) {
+  let n = obj;
+  const guard = new Set();
+  while (n && !guard.has(n)) {
+    guard.add(n);
+    if (n.isScene) return n;
+    if (n.parent) { n = n.parent; continue; }
+    break;
+  }
+  return obj && obj.isScene ? obj : null;
+}
+
+/**
+ * Locate the live Three.js Scene in the page. Strategy order:
+ *  1) Walk the WebGL canvas's React fiber tree for a Scene/Mesh/Renderer.
+ *  2) Scan window own-properties.
+ * Returns the Scene object or null.
+ */
+export function findScene() {
+  const canvas = document.querySelector('canvas');
+  const seen = new Set();
+  let found = null;
+
+  function consider(v) {
+    if (found || !isThree(v)) return;
+    const scene = v.isScene ? v : (v.isWebGLRenderer ? null : rootSceneOf(v));
+    if (scene && scene.isScene) found = scene;
+  }
+
+  if (canvas) {
+    const key = Object.keys(canvas).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+    if (key) {
+      const stack = [canvas[key]];
+      let depth = 0;
+      while (stack.length && !found && depth < 5000) {
+        depth++;
+        const node = stack.pop();
+        if (!node || typeof node !== 'object' || seen.has(node)) continue;
+        seen.add(node);
+        for (const prop of ['stateNode','memoizedState','memoizedProps','child','sibling','return']) {
+          let v; try { v = node[prop]; } catch { continue; }
+          if (!v || typeof v !== 'object') continue;
+          consider(v);
+          if (['child','sibling','return','stateNode','memoizedState'].includes(prop)) stack.push(v);
+        }
+      }
+    }
+  }
+
+  if (!found) {
+    for (const k of Object.keys(window)) {
+      let v; try { v = window[k]; } catch { continue; }
+      consider(v);
+      if (found) break;
+    }
+  }
+  return found;
+}
+
+/**
+ * Find the scene and extract its model geometry.
+ * @returns {CapturedMesh[]}
+ * @throws {Error} if no scene or no model meshes are found.
+ */
+export function captureSceneGeometry() {
+  const scene = findScene();
+  if (!scene) throw new Error('Could not find the Meshy 3D scene. Open a model and try again.');
+  const meshes = extractMeshes(scene);
+  if (meshes.length === 0) throw new Error('No exportable geometry found — is a model open in the viewer?');
+  return meshes;
+}
