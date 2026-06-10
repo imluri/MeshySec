@@ -22,7 +22,16 @@ anything else.
 
 ## 🛠️ Install it (super simple)
 
-You only need to do **Step A** once. After that, just use the button.
+### ⚡ Easiest way — double-click `install.bat` (Windows)
+
+1. Double-click **`install.bat`** in this folder.
+2. It builds the extension (if needed) and opens **Chrome's extensions page** plus this folder for you. The path to the `dist` folder is even copied to your clipboard.
+3. In Chrome: turn on **Developer mode** (top-right), click **Load unpacked**, and choose the **`dist`** folder (or paste the copied path).
+4. Done! 🎉 *(First time only: if it asks for Node.js, click the link it opens, install it, then run `install.bat` again.)*
+
+Prefer to do it by hand, or not on Windows? Use the steps below. 👇
+
+---
 
 ### Step A — get the `dist` folder ready (one time)
 
