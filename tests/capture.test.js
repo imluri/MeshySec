@@ -50,6 +50,37 @@ describe('extractMeshes', () => {
   });
 });
 
+describe('extractMeshes — interleaved / accessor-based attributes', () => {
+  // Mimics a Three.js InterleavedBufferAttribute backed by a quantized Uint16
+  // packed buffer (stride 4). The real per-vertex values are exposed ONLY via
+  // getX/getY/getZ; `.array` is the wrong-length packed buffer and must be ignored.
+  function interleavedPosition(localXYZ) {
+    const count = localXYZ.length / 3;
+    return {
+      count, itemSize: 3, isInterleavedBufferAttribute: true, data: { stride: 4 },
+      array: new Uint16Array(count * 4), // wrong length on purpose
+      getX: (i) => localXYZ[i * 3], getY: (i) => localXYZ[i * 3 + 1], getZ: (i) => localXYZ[i * 3 + 2],
+    };
+  }
+  const meshWith = (position, matrix) => ({
+    isMesh: true, isObject3D: true, name: 'm', visible: true, children: [],
+    matrixWorld: { elements: matrix || [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1] },
+    geometry: { isBufferGeometry: true, attributes: { position }, index: null },
+  });
+
+  it('de-interleaves position via getX/getY/getZ instead of the raw packed array', () => {
+    const out = extractMeshes({ isScene: true, children: [meshWith(interleavedPosition([1,2,3, 4,5,6]))] });
+    expect(out.length).toBe(1);
+    expect(Array.from(out[0].positions)).toEqual([1,2,3, 4,5,6]);
+  });
+
+  it('bakes the world matrix onto de-interleaved (quantized) positions', () => {
+    const m = [1,0,0,0, 0,1,0,0, 0,0,1,0, 100,0,0,1]; // translate +100 on x
+    const out = extractMeshes({ isScene: true, children: [meshWith(interleavedPosition([1,2,3]), m)] });
+    expect(Array.from(out[0].positions)).toEqual([101,2,3]);
+  });
+});
+
 describe('findSceneInGraph', () => {
   const noTime = { now: () => 0 };
 

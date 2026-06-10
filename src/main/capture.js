@@ -30,7 +30,40 @@ function bakeNormals(src, e) {
 
 function indicesToUint32(index) {
   if (!index || !index.array) return null;
-  return index.array instanceof Uint32Array ? index.array : Uint32Array.from(index.array);
+  const count = index.count != null ? index.count : index.array.length;
+  if (index.array instanceof Uint32Array && count === index.array.length) return index.array;
+  const out = new Uint32Array(count);
+  for (let i = 0; i < count; i++) out[i] = index.array[i];
+  return out;
+}
+
+/**
+ * Read a vertex attribute into a tightly-packed Float32Array of `count * comps`.
+ *
+ * Three.js stores geometry as plain OR interleaved attributes, and values may be
+ * quantized (e.g. Uint16) — so `attribute.array` is NOT a clean per-vertex array.
+ * The canonical reader is `getX/getY/getZ(i)`, which de-interleaves and
+ * de-normalizes regardless of storage. We fall back to a strided read of `.array`
+ * only when accessor methods are absent (e.g. test fakes / plain buffers).
+ * @param {object} attr  a Three.js BufferAttribute / InterleavedBufferAttribute
+ * @param {number} comps 3 for position/normal, 2 for uv
+ * @returns {Float32Array}
+ */
+function readVec(attr, comps) {
+  const count = attr.count != null ? attr.count : Math.floor((attr.array ? attr.array.length : 0) / comps);
+  const out = new Float32Array(count * comps);
+  if (typeof attr.getX === 'function') {
+    for (let i = 0; i < count; i++) {
+      out[i * comps] = attr.getX(i);
+      if (comps > 1) out[i * comps + 1] = attr.getY(i);
+      if (comps > 2) out[i * comps + 2] = attr.getZ(i);
+    }
+  } else if (attr.array) {
+    const stride = attr.data && attr.data.stride ? attr.data.stride : comps;
+    const offset = attr.offset || 0;
+    for (let i = 0; i < count; i++) for (let c = 0; c < comps; c++) out[i * comps + c] = attr.array[offset + i * stride + c];
+  }
+  return out;
 }
 
 /**
@@ -51,13 +84,14 @@ export function extractMeshes(scene) {
 
     const attrs = node.geometry.attributes || {};
     const pos = attrs.position;
-    if (!pos || !pos.array || pos.array.length === 0) continue;
+    const vcount = pos ? (pos.count != null ? pos.count : (pos.array ? pos.array.length / 3 : 0)) : 0;
+    if (!vcount) continue;
 
     const e = (node.matrixWorld && node.matrixWorld.elements) || [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
     out.push({
-      positions: bakePositions(pos.array, e),
-      normals: attrs.normal && attrs.normal.array ? bakeNormals(attrs.normal.array, e) : null,
-      uvs: attrs.uv && attrs.uv.array ? Float32Array.from(attrs.uv.array) : null,
+      positions: bakePositions(readVec(pos, 3), e),
+      normals: attrs.normal ? bakeNormals(readVec(attrs.normal, 3), e) : null,
+      uvs: attrs.uv ? readVec(attrs.uv, 2) : null,
       indices: indicesToUint32(node.geometry.index),
       name: node.name || `mesh_${out.length}`,
     });
