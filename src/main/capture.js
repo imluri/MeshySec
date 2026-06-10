@@ -65,69 +65,116 @@ export function extractMeshes(scene) {
   return out;
 }
 
-const isThree = (o) => {
-  try { return !!o && (o.isScene || o.isObject3D || o.isMesh || o.isWebGLRenderer); }
-  catch { return false; }
-};
-
-/** Climb from any Three.js object to its root scene. */
-function rootSceneOf(obj) {
-  let n = obj;
+/** Climb from any Three.js object to its root scene via `.parent`. */
+function climbToScene(v) {
+  let n = v;
   const guard = new Set();
-  while (n && !guard.has(n)) {
+  while (n && typeof n === 'object' && !guard.has(n)) {
     guard.add(n);
     if (n.isScene) return n;
-    if (n.parent) { n = n.parent; continue; }
-    break;
+    try { n = n.parent; } catch { return null; }
   }
-  return obj && obj.isScene ? obj : null;
+  return null;
 }
 
 /**
- * Locate the live Three.js Scene in the page. Strategy order:
- *  1) Walk the WebGL canvas's React fiber tree for a Scene/Mesh/Renderer.
- *  2) Scan window own-properties.
- * Returns the Scene object or null.
+ * Bounded generic search of an object graph for a Three.js Scene.
+ *
+ * The scene is not stored at any well-known location — in the Meshy viewer it
+ * lives behind a react-three-fiber React Context, reached only by recursing
+ * through arbitrary (minified) property names. So rather than hardcode a brittle
+ * path, we walk every own-enumerable property from the given roots and identify
+ * the Scene by its duck-typed `isScene` flag (or climb `.parent` from any
+ * Object3D/Mesh). A visited set guards against cycles; node/depth/time caps keep
+ * it bounded.
+ *
+ * @param {Array<any>} roots  starting objects (e.g. React fiber nodes)
+ * @param {{maxNodes?:number, maxDepth?:number, maxMs?:number, now?:()=>number,
+ *          skip?:(v:any)=>boolean}} [opts]
+ * @returns {object|null} the Scene object, or null if none is reachable
+ */
+export function findSceneInGraph(roots, opts = {}) {
+  const maxNodes = opts.maxNodes ?? 300000;
+  const maxDepth = opts.maxDepth ?? 30;
+  const maxMs = opts.maxMs ?? 0; // 0 = no time limit
+  const now = opts.now ?? (() => 0);
+  const skip = opts.skip;
+  const t0 = now();
+  const seen = new Set();
+  const stack = [];
+  for (const r of roots) stack.push([r, 0]);
+  let nodes = 0;
+
+  while (stack.length) {
+    if (nodes > maxNodes) break;
+    if (maxMs && now() - t0 > maxMs) break;
+    const [v, depth] = stack.pop();
+    if (v == null || depth > maxDepth) continue;
+    const ty = typeof v;
+    if (ty !== 'object' && ty !== 'function') continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    nodes++;
+
+    try {
+      if (v.isScene) return v;
+      if (v.isObject3D || v.isMesh) { const s = climbToScene(v); if (s) return s; }
+    } catch { /* exotic getter — ignore */ }
+
+    if (skip && skip(v)) continue;
+    if (ty !== 'object') continue;
+
+    let keys;
+    try { keys = Object.keys(v); } catch { continue; }
+    if (Array.isArray(v)) {
+      const lim = Math.min(v.length, 4000);
+      for (let i = 0; i < lim; i++) stack.push([v[i], depth + 1]);
+    } else {
+      for (const k of keys) {
+        if (k === '_owner' || k === '_debugOwner') continue; // React back-pointers: noise/cycles
+        let cv; try { cv = v[k]; } catch { continue; }
+        stack.push([cv, depth + 1]);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Locate the live Three.js Scene in the page by searching the object graph
+ * reachable from the WebGL canvas's React fiber (and a few DOM ancestors), with
+ * a window-property fallback. Returns the Scene object or null.
  */
 export function findScene() {
+  const roots = [];
   const canvas = document.querySelector('canvas');
-  const seen = new Set();
-  let found = null;
-
-  function consider(v) {
-    if (found || !isThree(v)) return;
-    const scene = v.isScene ? v : (v.isWebGLRenderer ? null : rootSceneOf(v));
-    if (scene && scene.isScene) found = scene;
-  }
-
   if (canvas) {
-    const key = Object.keys(canvas).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
-    if (key) {
-      const stack = [canvas[key]];
-      let depth = 0;
-      while (stack.length && !found && depth < 5000) {
-        depth++;
-        const node = stack.pop();
-        if (!node || typeof node !== 'object' || seen.has(node)) continue;
-        seen.add(node);
-        for (const prop of ['stateNode','memoizedState','memoizedProps','child','sibling','return']) {
-          let v; try { v = node[prop]; } catch { continue; }
-          if (!v || typeof v !== 'object') continue;
-          consider(v);
-          if (['child','sibling','return','stateNode','memoizedState'].includes(prop)) stack.push(v);
+    for (const k of Object.keys(canvas)) {
+      if (k.startsWith('__react')) { try { roots.push(canvas[k]); } catch { /* ignore */ } }
+    }
+    let node = canvas.parentElement;
+    for (let i = 0; i < 12 && node; i++, node = node.parentElement) {
+      for (const k of Object.keys(node)) {
+        if (k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')) {
+          try { roots.push(node[k]); } catch { /* ignore */ }
         }
       }
     }
   }
 
-  if (!found) {
-    for (const k of Object.keys(window)) {
-      let v; try { v = window[k]; } catch { continue; }
-      consider(v);
-      if (found) break;
-    }
+  const skip = (v) => {
+    try { return v instanceof Node || v === window || v === document; }
+    catch { return false; }
+  };
+  const scene = findSceneInGraph(roots, { maxMs: 3000, now: () => performance.now(), skip });
+  if (scene) return scene;
+
+  // Fallback: a Scene parked directly on a window property.
+  for (const k of Object.keys(window)) {
+    let v; try { v = window[k]; } catch { continue; }
+    try { if (v && v.isScene) return v; } catch { /* ignore */ }
   }
-  return found;
+  return null;
 }
 
 /**

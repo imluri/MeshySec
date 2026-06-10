@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractMeshes } from '../src/main/capture.js';
+import { extractMeshes, findSceneInGraph } from '../src/main/capture.js';
 
 // Minimal fake Three.js objects (duck-typed).
 function fakeMesh(name, positions, opts = {}) {
@@ -47,5 +47,43 @@ describe('extractMeshes', () => {
     const group = { isObject3D: true, name: 'Group', children: [child] };
     const out = extractMeshes(fakeScene([group]));
     expect(out.length).toBe(1);
+  });
+});
+
+describe('findSceneInGraph', () => {
+  const noTime = { now: () => 0 };
+
+  it('reaches a Scene buried behind arbitrary nested properties (incl. a cycle)', () => {
+    // Mimics the real find: scene sits behind React-context-like nesting with
+    // minified/arbitrary key names, reached via modelRoots[0].parent.
+    const scene = { isScene: true, isObject3D: true, name: 'Scene', children: [] };
+    const modelRoot = { isObject3D: true, isMesh: false, name: 'ModelRoot', parent: scene };
+    scene.children.push(modelRoot);
+    const ctxLeaf = { memoizedValue: { modelRoots: [modelRoot], other: 1 } };
+    const chain = { next: { next: { next: ctxLeaf } } };
+    const fiber = { return: { dependencies: { firstContext: chain } }, junk: { a: 1 } };
+    fiber.alternate = fiber; // cycle must not hang the walk
+
+    expect(findSceneInGraph([fiber], noTime)).toBe(scene);
+  });
+
+  it('climbs .parent from a Mesh up to the root Scene', () => {
+    const scene = { isScene: true, isObject3D: true };
+    const group = { isObject3D: true, parent: scene };
+    const mesh = { isMesh: true, isObject3D: true, parent: group };
+    const root = { a: { b: { c: mesh } } };
+    expect(findSceneInGraph([root], noTime)).toBe(scene);
+  });
+
+  it('returns null when no Scene is reachable', () => {
+    const root = { a: { b: { c: { d: 1 } } } };
+    expect(findSceneInGraph([root], noTime)).toBe(null);
+  });
+
+  it('honors maxDepth (does not find a scene deeper than the limit)', () => {
+    const scene = { isScene: true };
+    const root = { a: { b: { c: { d: { e: scene } } } } }; // scene at depth 5
+    expect(findSceneInGraph([root], { ...noTime, maxDepth: 2 })).toBe(null);
+    expect(findSceneInGraph([root], { ...noTime, maxDepth: 10 })).toBe(scene);
   });
 });
