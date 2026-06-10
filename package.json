@@ -1,0 +1,15 @@
+{
+  "name": "meshy-glb-exporter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.1.0",
+    "esbuild": "^0.24.0",
+    "vitest": "^2.1.0"
+  }
+}

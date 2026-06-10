@@ -1,0 +1,15 @@
+#meshy-glb-export-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647;
+  padding: 10px 14px;
+  font: 600 13px/1 system-ui, sans-serif;
+  color: #fff;
+  background: #6c4cff;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  cursor: pointer;
+}
+#meshy-glb-export-btn[disabled] { opacity: .6; cursor: default; }
